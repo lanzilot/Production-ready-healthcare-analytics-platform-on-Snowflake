@@ -1,0 +1,5 @@
+CREATE ROLE IF NOT EXISTS finance_analyst;
+GRANT USAGE ON DATABASE hospital_db TO ROLE finance_analyst;
+GRANT USAGE ON SCHEMA hospital_db.gold TO ROLE finance_analyst;
+GRANT SELECT ON ALL TABLES IN SCHEMA hospital_db.gold TO ROLE finance_analyst;
+GRANT SELECT ON ALL VIEWS IN SCHEMA hospital_db.gold TO ROLE finance_analyst;
