@@ -1,0 +1,13 @@
+CREATE OR REPLACE VIEW hospital_db.gold.monthly_revenue_by_revcode AS
+SELECT 
+    d.year,
+    d.month,
+    i.rev_code,
+    SUM(f.total_amount) AS total_revenue,
+    COUNT(DISTINCT f.patient_id) AS unique_patients,
+    COUNT(*) AS claim_count
+FROM hospital_db.gold.fct_charges f
+JOIN hospital_db.gold.dim_date d ON f.charge_date = d.date
+JOIN hospital_db.gold.dim_item i ON f.item_id = i.item_id
+GROUP BY d.year, d.month, i.rev_code
+ORDER BY d.year, d.month, i.rev_code;
