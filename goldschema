@@ -1,10 +1,11 @@
+1. Create gold schema (if not exists)
 CREATE OR REPLACE SCHEMA hospital_db.gold;
 
-* Date Dimension (utility for time-based analysis)
+2. Date dimension (unchanged)
 CREATE OR REPLACE TABLE hospital_db.gold.dim_date AS
 WITH date_range AS (
     SELECT DATEADD(day, seq4(), '2015-01-01') AS date
-    FROM TABLE(GENERATOR(rowcount => 3650))  -- 10 years
+    FROM TABLE(GENERATOR(rowcount => 3650))
 )
 SELECT 
     date,
@@ -18,11 +19,12 @@ SELECT
     WEEKOFYEAR(date) AS week_of_year
 FROM date_range;
 
-*Patient Dimension
+3. Patient dimension (includes pin, adm_no for joining)
 CREATE OR REPLACE TABLE hospital_db.gold.dim_patient AS
 SELECT DISTINCT
     patient_id,
     pin,
+    adm_no,
     full_name,
     last_name,
     first_name,
@@ -36,7 +38,7 @@ SELECT DISTINCT
 FROM hospital_db.silver.patients_clean
 WHERE patient_id IS NOT NULL;
 
-*Doctor Dimension
+4. Doctor dimension (assuming silver.doctors_clean has doctor_id, doctor_name, specialty)
 CREATE OR REPLACE TABLE hospital_db.gold.dim_doctor AS
 SELECT DISTINCT
     doctor_id,
@@ -45,7 +47,7 @@ SELECT DISTINCT
 FROM hospital_db.silver.doctors_clean
 WHERE doctor_id IS NOT NULL;
 
-*Itemfile dimension
+5. Item dimension (from silver.item_file_clean)
 CREATE OR REPLACE TABLE hospital_db.gold.dim_item AS
 SELECT DISTINCT
     item_id,
@@ -58,12 +60,12 @@ SELECT DISTINCT
 FROM hospital_db.silver.item_file_clean
 WHERE item_id IS NOT NULL;
 
-*Fact Table Charges
+6. Fact table – charges (joined to patients via pin and adm_no)
 CREATE OR REPLACE TABLE hospital_db.gold.fct_charges AS
 SELECT 
     c.charge_id,
-    c.patient_id,
-    d.doctor_id,
+    p.patient_id,                     
+    NULL AS doctor_id,                
     i.item_id,
     c.charge_date,
     c.quantity,
@@ -72,6 +74,72 @@ SELECT
     c.status,
     c.created_at
 FROM hospital_db.silver.charges_clean c
-LEFT JOIN hospital_db.silver.patients_clean d ON UPPER(c.patient_id) = d.patient_id
-LEFT JOIN hospital_db.silver.item_file_clean i ON c.itmcode = i.itmcode
+LEFT JOIN hospital_db.silver.patients_clean p 
+    ON c.pin = p.pin AND c.adm_no = p.adm_no
+LEFT JOIN hospital_db.silver.item_file_clean i 
+    ON c.itmcode = i.itmcode
 WHERE c.charge_id IS NOT NULL;
+
+7. Monthly revenue view (using fct_charges and dimensions)
+CREATE OR REPLACE VIEW hospital_db.gold.monthly_revenue AS
+SELECT 
+    d.year,
+    d.month,
+    COALESCE(dc.doctor_name, 'UNKNOWN') AS doctor_name,
+    COALESCE(dc.specialty, 'UNKNOWN') AS specialty,
+    COALESCE(i.itmdesc, 'UNKNOWN') AS procedure_name,
+    SUM(f.total_amount) AS total_revenue,
+    COUNT(DISTINCT f.patient_id) AS unique_patients,
+    COUNT(*) AS claim_count
+FROM hospital_db.gold.fct_charges f
+JOIN hospital_db.gold.dim_date d ON f.charge_date = d.date
+LEFT JOIN hospital_db.gold.dim_doctor dc ON f.doctor_id = dc.doctor_id
+LEFT JOIN hospital_db.gold.dim_item i ON f.item_id = i.item_id
+GROUP BY 1,2,3,4,5;
+
+8. Patient 360 view
+CREATE OR REPLACE VIEW hospital_db.gold.patient_360 AS
+SELECT 
+    p.patient_id,
+    p.full_name,
+    p.sex,
+    p.age,
+    p.address,
+    COUNT(f.charge_id) AS total_visits,
+    SUM(f.total_amount) AS total_charges,
+    AVG(f.total_amount) AS avg_charge_per_visit,
+    MIN(f.charge_date) AS first_visit_date,
+    MAX(f.charge_date) AS last_visit_date
+FROM hospital_db.gold.dim_patient p
+LEFT JOIN hospital_db.gold.fct_charges f ON p.patient_id = f.patient_id
+GROUP BY 1,2,3,4,5;
+
+9. Billing anomalies view
+CREATE OR REPLACE VIEW hospital_db.gold.billing_anomalies AS
+SELECT 
+    charge_id,
+    patient_id,
+    doctor_id,
+    charge_date,
+    quantity,
+    unit_price,
+    total_amount,
+    status,
+    CASE 
+        WHEN quantity IS NULL OR quantity <= 0 THEN 'Invalid quantity'
+        WHEN unit_price IS NULL OR unit_price <= 0 THEN 'Invalid unit price'
+        WHEN total_amount IS NULL OR total_amount <= 0 THEN 'Invalid total amount'
+        WHEN quantity * unit_price <> total_amount THEN 'Math mismatch'
+        ELSE 'OK'
+    END AS anomaly_reason
+FROM hospital_db.gold.fct_charges
+WHERE quantity IS NULL OR quantity <= 0 
+   OR unit_price IS NULL OR unit_price <= 0 
+   OR total_amount IS NULL OR total_amount <= 0 
+   OR quantity * unit_price <> total_amount;
+
+10. Verification counts
+SELECT 'dim_patient' AS object, COUNT(*) FROM hospital_db.gold.dim_patient
+UNION ALL SELECT 'dim_doctor', COUNT(*) FROM hospital_db.gold.dim_doctor
+UNION ALL SELECT 'dim_item', COUNT(*) FROM hospital_db.gold.dim_item
+UNION ALL SELECT 'fct_charges', COUNT(*) FROM hospital_db.gold.fct_charges;
