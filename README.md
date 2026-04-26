@@ -17,4 +17,10 @@ Clustering key on silver.charges_clean by charge_date, and a resource monitor on
 All of this was built manually using Snowflake worksheets and SQL commands.
 
 ## Data Flow Summary
+1. Ingestion – CSV files are uploaded to an internal stage and loaded into bronze tables (raw, with minimal validation).
+2. Streams – Capture every new or changed row in the bronze tables.
+3. Tasks – Scheduled processes run every few minutes, reading the streams and transforming data into silver tables (clean, typed, deduplicated).
+4. Gold layer – Built from silver tables using materialized views or incremental inserts to form a star schema (dim_* and fct_charges) plus business‑focused views.
+5. Access – Different roles see different data; patient names are masked for financial analysts.
+6. Cost/Performance – The ETL warehouse shuts down automatically if credit usage exceeds the monthly quota, and clustering keys speed up date‑filtered queries.
 
