@@ -10,3 +10,18 @@ CREATE RESOURCE MONITOR IF NOT EXISTS etl_wh_monitor
         ON 110 PERCENT DO SUSPEND_IMMEDIATE;
 
 ALTER WAREHOUSE ETL_WH SET RESOURCE_MONITOR = etl_wh_monitor;
+
+CREATE OR REPLACE TASK hospital_db.silver.process_charges_incremental
+    WAREHOUSE = ETL_WH
+    SCHEDULE = '5 MINUTE'
+WHEN SYSTEM$STREAM_HAS_DATA('hospital_db.bronze.charges_stream')
+AS
+    INSERT INTO hospital_db.silver.charges_clean
+    SELECT 
+        TRY_CAST(id AS NUMBER(38,0)), pin, adm_no, UPPER(TRIM(name)),
+        TRY_CAST(date AS DATE), rev_code, chno, itmcode, itmdesc, unit,
+        TRY_CAST(qty AS NUMBER(12,2)), TRY_CAST(price AS NUMBER(12,2)),
+        TRY_CAST(amount AS NUMBER(12,2)), UPPER(status), CURRENT_TIMESTAMP()
+    FROM hospital_db.bronze.charges_stream
+    WHERE METADATA$ACTION = 'INSERT';
+
