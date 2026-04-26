@@ -1,0 +1,77 @@
+CREATE OR REPLACE SCHEMA hospital_db.gold;
+
+* Date Dimension (utility for time-based analysis)
+CREATE OR REPLACE TABLE hospital_db.gold.dim_date AS
+WITH date_range AS (
+    SELECT DATEADD(day, seq4(), '2015-01-01') AS date
+    FROM TABLE(GENERATOR(rowcount => 3650))  -- 10 years
+)
+SELECT 
+    date,
+    YEAR(date) AS year,
+    MONTH(date) AS month,
+    MONTHNAME(date) AS month_name,
+    QUARTER(date) AS quarter,
+    DAY(date) AS day,
+    DAYOFWEEK(date) AS day_of_week,
+    DAYNAME(date) AS day_name,
+    WEEKOFYEAR(date) AS week_of_year
+FROM date_range;
+
+*Patient Dimension
+CREATE OR REPLACE TABLE hospital_db.gold.dim_patient AS
+SELECT DISTINCT
+    patient_id,
+    pin,
+    full_name,
+    last_name,
+    first_name,
+    sex,
+    age,
+    civil_status,
+    address,
+    province,
+    barangay,
+    municipal
+FROM hospital_db.silver.patients_clean
+WHERE patient_id IS NOT NULL;
+
+*Doctor Dimension
+CREATE OR REPLACE TABLE hospital_db.gold.dim_doctor AS
+SELECT DISTINCT
+    doctor_id,
+    doctor_name,
+    specialty
+FROM hospital_db.silver.doctors_clean
+WHERE doctor_id IS NOT NULL;
+
+*Itemfile dimension
+CREATE OR REPLACE TABLE hospital_db.gold.dim_item AS
+SELECT DISTINCT
+    item_id,
+    itmcode,
+    itmdesc,
+    rev_code,
+    unit,
+    item_cost,
+    item_price
+FROM hospital_db.silver.item_file_clean
+WHERE item_id IS NOT NULL;
+
+*Fact Table Charges
+CREATE OR REPLACE TABLE hospital_db.gold.fct_charges AS
+SELECT 
+    c.charge_id,
+    c.patient_id,
+    d.doctor_id,
+    i.item_id,
+    c.charge_date,
+    c.quantity,
+    c.unit_price,
+    c.total_amount,
+    c.status,
+    c.created_at
+FROM hospital_db.silver.charges_clean c
+LEFT JOIN hospital_db.silver.patients_clean d ON UPPER(c.patient_id) = d.patient_id
+LEFT JOIN hospital_db.silver.item_file_clean i ON c.itmcode = i.itmcode
+WHERE c.charge_id IS NOT NULL;
