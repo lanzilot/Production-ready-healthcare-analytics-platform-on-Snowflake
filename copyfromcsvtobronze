@@ -1,0 +1,23 @@
+COPY INTO hospital_db.bronze.patient
+FROM @hospital_db.public.my_stage/raw_patient.csv
+FILE_FORMAT = (FORMAT_NAME = 'hospital_db.public.csv_format_charges')
+ON_ERROR = 'CONTINUE'
+FORCE = TRUE;
+
+COPY INTO hospital_db.bronze.charges
+FROM @hospital_db.public.my_stage/raw_charges.csv
+FILE_FORMAT = (FORMAT_NAME = 'hospital_db.public.csv_format_charges')
+ON_ERROR = 'CONTINUE'
+FORCE = TRUE;
+
+COPY INTO hospital_db.bronze.doctors
+FROM @hospital_db.public.my_stage/raw_doctors.csv
+FILE_FORMAT = (FORMAT_NAME = 'hospital_db.public.csv_format_charges')
+ON_ERROR = 'CONTINUE'
+FORCE = TRUE;
+
+COPY INTO hospital_db.bronze.item_file
+FROM @hospital_db.public.my_stage/raw_itemfile5.csv
+FILE_FORMAT = (FORMAT_NAME = 'hospital_db.public.csv_format_with_header')
+ON_ERROR = 'CONTINUE'
+FORCE = TRUE;
