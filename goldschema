@@ -64,8 +64,8 @@ WHERE item_id IS NOT NULL;
 CREATE OR REPLACE TABLE hospital_db.gold.fct_charges AS
 SELECT 
     c.charge_id,
-    p.patient_id,                     
-    NULL AS doctor_id,                
+    p.patient_id,
+    NULL AS doctor_id,
     i.item_id,
     c.charge_date,
     c.quantity,
@@ -74,11 +74,10 @@ SELECT
     c.status,
     c.created_at
 FROM hospital_db.silver.charges_clean c
-LEFT JOIN hospital_db.silver.patients_clean p 
+INNER JOIN hospital_db.silver.patients_clean p 
     ON c.pin = p.pin AND c.adm_no = p.adm_no
 LEFT JOIN hospital_db.silver.item_file_clean i 
-    ON c.itmcode = i.itmcode
-WHERE c.charge_id IS NOT NULL;
+    ON c.itmcode = i.itmcode;
 
 7. Monthly revenue view (using fct_charges and dimensions)
 CREATE OR REPLACE VIEW hospital_db.gold.monthly_revenue_by_revcode AS
