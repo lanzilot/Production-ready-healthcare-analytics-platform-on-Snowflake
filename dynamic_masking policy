@@ -1,0 +1,9 @@
+* create a dynamic masking policy for patient names (hide from finance_analyst)
+  
+CREATE OR REPLACE MASKING POLICY mask_patient_name AS (val STRING) RETURNS STRING ->
+    CASE WHEN CURRENT_ROLE() IN ('ACCOUNTADMIN', 'SYSADMIN', 'DATA_ENGINEER') THEN val
+         ELSE 'REDACTED'
+    END;
+
+* Apply mask to the full_name column in gold.dim_patient
+ALTER TABLE hospital_db.gold.dim_patient MODIFY COLUMN full_name SET MASKING POLICY mask_patient_name;
