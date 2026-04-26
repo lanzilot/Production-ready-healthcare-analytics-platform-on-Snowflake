@@ -1,0 +1,4 @@
+*Add Clustering Key to silver.charges_clean (improves query performance)
+
+ALTER TABLE hospital_db.silver.charges_clean 
+CLUSTER BY (charge_date);
