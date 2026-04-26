@@ -1,0 +1,83 @@
+CREATE OR REPLACE SCHEMA hospital_db.silver;
+
+CREATE OR REPLACE TABLE hospital_db.silver.patients_clean AS
+SELECT 
+    TRY_CAST(id AS NUMBER(38,0)) AS patient_id,
+    pin,
+    adm_no,
+    UPPER(TRIM(name)) AS full_name,
+    UPPER(TRIM(lastname)) AS last_name,
+    UPPER(TRIM(firstname)) AS first_name,
+    UPPER(TRIM(middlename)) AS middle_name,
+    TRY_CAST(dateadmit AS DATE) AS admit_date,
+    timeadmit,
+    TRY_CAST(datedisch AS DATE) as discharge_date,
+    timedisch,
+    TRY_CAST(birthdate AS DATE) AS birth_date,
+    TRY_CAST(age AS INTEGER) AS age,
+    UPPER(sex) AS sex,
+    UPPER(civil) AS civil_status,
+    UPPER(national) AS nationality,
+    religion,
+    address,
+    province,
+    barangay,
+    municipal,
+    docname,
+    rev_code,
+    occupation,
+    roomtype,
+    service,
+    discstatus,
+    finaldiag,
+    icdcode,
+    philhealth,
+    CURRENT_TIMESTAMP() AS created_at
+FROM hospital_db.bronze.patients
+WHERE id IS NOT NULL;  -- basic filter
+
+CREATE OR REPLACE TABLE hospital_db.silver.charges_clean AS
+SELECT 
+    TRY_CAST(id AS NUMBER(38,0)) AS charge_id,
+    pin,
+    adm_no,
+    UPPER(TRIM(name)) AS patient_name,
+    TRY_CAST(date AS DATE) AS charge_date,
+    rev_code,
+    chno,
+    itmcode,
+    itmdesc,
+    unit,
+    TRY_CAST(qty AS NUMBER(12,2)) AS quantity,
+    TRY_CAST(price AS NUMBER(12,2)) AS unit_price,
+    TRY_CAST(amount AS NUMBER(12,2)) AS total_amount,
+    UPPER(status) AS status,
+    CURRENT_TIMESTAMP() AS created_at
+FROM hospital_db.bronze.charges
+WHERE id IS NOT NULL;
+
+CREATE OR REPLACE TABLE hospital_db.silver.doctors_clean AS
+SELECT 
+    TRY_CAST(id AS NUMBER(38,0)) AS doctor_id,
+    UPPER(TRIM(doc_name)) AS doctor_name,
+    UPPER(TRIM(specialty)) AS specialty,
+    CURRENT_TIMESTAMP() AS created_at
+FROM hospital_db.bronze.doctors
+WHERE id IS NOT NULL;
+
+CREATE OR REPLACE TABLE hospital_db.silver.item_file_clean AS
+SELECT 
+    TRY_CAST(id AS NUMBER(38,0)) AS item_id,
+    itmdesc,
+    itmcode,
+    rev_code,
+    TRY_CAST(qtyonhand AS NUMBER(12,2)) AS qty_on_hand,
+    unit,
+    TRY_CAST(datecount AS DATE) AS inventory_date,
+    TRY_CAST(itmcost AS NUMBER(12,2)) AS item_cost,
+    TRY_CAST(itmprice AS NUMBER(12,2)) AS item_price,
+    TRY_CAST(maxlevel AS NUMBER(12,2)) AS max_level,
+    TRY_CAST(minlevel AS NUMBER(12,2)) AS min_level,
+    CURRENT_TIMESTAMP() AS created_at
+FROM hospital_db.bronze.item_file
+WHERE id IS NOT NULL;
