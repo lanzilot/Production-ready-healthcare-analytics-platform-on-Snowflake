@@ -16,4 +16,5 @@ Clustering key on silver.charges_clean by charge_date, and a resource monitor on
 
 All of this was built manually using Snowflake worksheets and SQL commands.
 
+## Data Flow Summary
 
