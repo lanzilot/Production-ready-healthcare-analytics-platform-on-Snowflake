@@ -1,0 +1,79 @@
+-- Patients table
+CREATE OR REPLACE TABLE hospital_db.bronze.patients (
+    id integer,
+    pin STRING,
+    adm_no STRING,
+    ptype STRING,
+    name STRING,
+    lastname STRING,    
+    firstname STRING,
+    middlename STRING,
+    dateadmit DATE,
+    timeadmit STRING,
+    datedisch DATE,
+    timedisch STRING,
+    birthdate DATE,
+    age STRING,
+    sex STRING,
+    civil STRING,
+    national STRING,
+    religion STRING,
+    address STRING,
+    province STRING,
+    barangay STRING,
+    municipal STRING,
+    docname STRING,
+    rev_code STRING,
+    occupation STRING,
+    roomtype STRING,
+    service STRING,
+    discstatus STRING,
+    finaldiag STRING,
+    icdcode STRING,
+    philhealth STRING,
+    created_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+);
+
+
+-- Charges table
+CREATE OR REPLACE TABLE hospital_db.bronze.charges (
+    id INTEGER,
+    pin STRING,
+    adm_no STRING,
+    name STRING,
+    date DATE,
+    rev_code STRING,
+    chno STRING,
+    itmcode STRING,
+    itmdesc STRING,
+    unit STRING,
+    qty INTEGER,
+    price DECIMAL(10,2),
+    amount DECIMAL(10,2),
+    status INTEGER,
+    created_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+);
+
+-- Doctors table
+CREATE OR REPLACE TABLE hospital_db.bronze.doctors (
+    id INTEGER,
+    doc_name STRING,
+    specialty STRING,
+    created_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+);
+
+-- Item file (procedures/services)
+CREATE OR REPLACE TABLE hospital_db.bronze.item_file (
+    id INTEGER, 
+    itmdesc STRING,
+    itmcode STRING,
+    rev_code STRING,
+    qtyonhand INTEGER,
+    unit STRING,
+    datecount DATE,
+    itmcost DECIMAL(10,2),
+    itmprice DECIMAL(10,2),
+    maxlevel INTEGER,
+    minlevel INTEGER,
+    created_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+);
