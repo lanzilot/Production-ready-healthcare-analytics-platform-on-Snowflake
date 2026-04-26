@@ -1,10 +1,10 @@
 1. Create gold schema (if not exists)
 CREATE OR REPLACE SCHEMA hospital_db.gold;
 
-2. Date dimension (unchanged)
+2. Date dimension 
 CREATE OR REPLACE TABLE hospital_db.gold.dim_date AS
 WITH date_range AS (
-    SELECT DATEADD(day, seq4(), '2015-01-01') AS date
+    SELECT DATEADD(day, seq4(), '2017-01-01') AS date
     FROM TABLE(GENERATOR(rowcount => 3650))
 )
 SELECT 
@@ -19,7 +19,7 @@ SELECT
     WEEKOFYEAR(date) AS week_of_year
 FROM date_range;
 
-3. Patient dimension (includes pin, adm_no for joining)
+3. Patient dimension 
 CREATE OR REPLACE TABLE hospital_db.gold.dim_patient AS
 SELECT DISTINCT
     patient_id,
@@ -38,7 +38,7 @@ SELECT DISTINCT
 FROM hospital_db.silver.patients_clean
 WHERE patient_id IS NOT NULL;
 
-4. Doctor dimension (assuming silver.doctors_clean has doctor_id, doctor_name, specialty)
+4. Doctor dimension 
 CREATE OR REPLACE TABLE hospital_db.gold.dim_doctor AS
 SELECT DISTINCT
     doctor_id,
@@ -47,7 +47,7 @@ SELECT DISTINCT
 FROM hospital_db.silver.doctors_clean
 WHERE doctor_id IS NOT NULL;
 
-5. Item dimension (from silver.item_file_clean)
+5. Item dimension 
 CREATE OR REPLACE TABLE hospital_db.gold.dim_item AS
 SELECT DISTINCT
     item_id,
@@ -81,21 +81,18 @@ LEFT JOIN hospital_db.silver.item_file_clean i
 WHERE c.charge_id IS NOT NULL;
 
 7. Monthly revenue view (using fct_charges and dimensions)
-CREATE OR REPLACE VIEW hospital_db.gold.monthly_revenue AS
+CREATE OR REPLACE VIEW hospital_db.gold.monthly_revenue_by_revcode AS
 SELECT 
-    d.year,
-    d.month,
-    COALESCE(dc.doctor_name, 'UNKNOWN') AS doctor_name,
-    COALESCE(dc.specialty, 'UNKNOWN') AS specialty,
-    COALESCE(i.itmdesc, 'UNKNOWN') AS procedure_name,
-    SUM(f.total_amount) AS total_revenue,
-    COUNT(DISTINCT f.patient_id) AS unique_patients,
-    COUNT(*) AS claim_count
-FROM hospital_db.gold.fct_charges f
-JOIN hospital_db.gold.dim_date d ON f.charge_date = d.date
-LEFT JOIN hospital_db.gold.dim_doctor dc ON f.doctor_id = dc.doctor_id
-LEFT JOIN hospital_db.gold.dim_item i ON f.item_id = i.item_id
-GROUP BY 1,2,3,4,5;
+    YEAR(charge_date) AS year,
+    MONTH(charge_date) AS month,
+    rev_code,
+    COUNT(*) AS transaction_count,
+    SUM(total_amount) AS total_revenue,
+    COUNT(DISTINCT charge_id) AS unique_charges
+FROM hospital_db.silver.charges_clean
+WHERE rev_code IS NOT NULL
+GROUP BY YEAR(charge_date), MONTH(charge_date), rev_code
+ORDER BY year DESC, month DESC, total_revenue DESC;
 
 8. Patient 360 view
 CREATE OR REPLACE VIEW hospital_db.gold.patient_360 AS
